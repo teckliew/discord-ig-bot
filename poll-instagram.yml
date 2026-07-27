@@ -1,0 +1,52 @@
+name: Poll Instagram and post to Discord
+
+on:
+  schedule:
+    # Every 15 minutes. GitHub may delay scheduled runs during high load,
+    # so treat this as "roughly every 15 min," not exact.
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}  # lets you manually trigger a run from the Actions tab
+
+permissions:
+  contents: write  # needed so the workflow can commit state.json back
+
+jobs:
+  check-and-post:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run single check
+        env:
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          IG_ACCESS_TOKEN: ${{ secrets.IG_ACCESS_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python run_single.py
+
+      - name: Commit updated state.json (if changed)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          git diff --staged --quiet || git commit -m "Update state.json [skip ci]"
+          git push
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          # Uses a dedicated alert webhook if you set one, otherwise falls
+          # back to the same channel as regular posts.
+          ALERT_WEBHOOK: ${{ secrets.DISCORD_ALERT_WEBHOOK_URL || secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          curl -sf -H "Content-Type: application/json" -X POST \
+            -d "{\"content\": \"⚠️ **IG → Discord bot run failed.** Likely an expired/invalid Instagram access token. Check the log: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}\"}" \
+            "$ALERT_WEBHOOK"
