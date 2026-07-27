@@ -2,9 +2,9 @@ name: Poll Instagram and post to Discord
 
 on:
   schedule:
-    # Every 15 minutes. GitHub may delay scheduled runs during high load,
-    # so treat this as "roughly every 15 min," not exact.
-    - cron: "*/15 * * * *"
+    # Every 5 minutes. GitHub may delay scheduled runs during high load,
+    # so treat this as "roughly every 5 min," not exact.
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}  # lets you manually trigger a run from the Actions tab
 
 permissions:
