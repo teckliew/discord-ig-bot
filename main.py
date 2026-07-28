@@ -167,8 +167,22 @@ def post_video_to_discord(media: dict) -> bool:
 
 
 def _post_video_link_fallback(media: dict, caption: str) -> bool:
+    media_type = media.get("media_type")
+    image_url = media.get("media_url") if media_type != "VIDEO" else media.get("thumbnail_url")
+
+    embed = {
+        "title": "New Instagram Post",
+        "url": media.get("permalink"),
+        "description": caption,
+        "timestamp": media.get("timestamp"),
+        "color": 0xE1306C,  # Instagram-ish pink
+    }
+    if image_url:
+        embed["image"] = {"url": image_url}
+
     payload = {
-        "content": f"**New Instagram Video**\n{caption}\n{media.get('permalink')}",
+        "content": media.get("permalink"),  # plain link so Discord/mobile can preview reliably too
+        "embeds": [embed],
     }
     try:
         resp = requests.post(DISCORD_WEBHOOK_URL, json=payload, timeout=30)
